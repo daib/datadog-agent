@@ -1805,7 +1805,7 @@ func TestUnconnectedUDPSendIPv6(t *testing.T) {
 		t.Skip("IPv6 not enabled on host")
 	}
 
-	cfg := config.NewDefaultConfig()
+	cfg := testConfig()
 	cfg.CollectIPv6Conns = true
 	tr, err := NewTracer(cfg)
 	require.NoError(t, err)
