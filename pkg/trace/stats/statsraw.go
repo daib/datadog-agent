@@ -17,6 +17,7 @@ import (
 
 const (
 	relativeAccuracy = 0.01
+	maxNumBins       = 2048
 )
 
 // Most "algorithm" stuff here is tested with stats_test.go as what is important
@@ -57,8 +58,8 @@ func (s *groupedStats) export(k statsKey) (pb.ClientGroupedStats, error) {
 }
 
 func newGroupedStats() *groupedStats {
-	ok, _ := ddsketch.NewDefaultDDSketch(relativeAccuracy)
-	err, _ := ddsketch.NewDefaultDDSketch(relativeAccuracy)
+	ok, _ := ddsketch.LogCollapsingLowestDenseDDSketch(relativeAccuracy, maxNumBins)
+	err, _ := ddsketch.LogCollapsingLowestDenseDDSketch(relativeAccuracy, maxNumBins)
 	return &groupedStats{
 		okDistribution:  ok,
 		errDistribution: err,
