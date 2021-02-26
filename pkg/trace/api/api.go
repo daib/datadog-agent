@@ -105,13 +105,24 @@ func NewHTTPReceiver(conf *config.AgentConfig, dynConf *sampler.DynamicConfig, o
 func (r *HTTPReceiver) buildMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
+	hash, infoHandler := r.makeInfoHandler()
 	r.attachDebugHandlers(mux)
 	for _, e := range endpoints {
-		mux.Handle(e.Pattern, e.Handler(r))
+		mux.Handle(e.Pattern, replyWithVersion(hash, e.Handler(r)))
 	}
-	mux.HandleFunc("/info", r.makeInfoHandler())
+	mux.HandleFunc("/info", infoHandler)
 
 	return mux
+}
+
+// replyWithVersion returns an http.Handler which calls h with an addition of some
+// HTTP headers containing version and state information.
+func replyWithVersion(hash string, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Datadog-Agent-Version", info.Version)
+		w.Header().Set("Datadog-Agent-State", hash)
+		h.ServeHTTP(w, r)
+	})
 }
 
 // Start starts doing the HTTP server and is ready to receive traces
