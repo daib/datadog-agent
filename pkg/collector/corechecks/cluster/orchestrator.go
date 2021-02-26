@@ -79,6 +79,7 @@ type OrchestratorCheck struct {
 	stopCh                  chan struct{}
 	clusterID               string
 	groupID                 int32
+	apiClient               *apiserver.APIClient
 	unassignedPodLister     corelisters.PodLister
 	unassignedPodListerSync cache.InformerSynced
 	deployLister            appslisters.DeploymentLister
@@ -156,6 +157,7 @@ func (o *OrchestratorCheck) Configure(config, initConfig integration.Data, sourc
 	apiCtx, apiCancel := context.WithTimeout(context.Background(), maximumWaitForAPIServer)
 	defer apiCancel()
 	apiCl, err := apiserver.WaitForAPIClient(apiCtx)
+	o.apiClient = apiCl
 	if err != nil {
 		return err
 	}
@@ -326,6 +328,9 @@ func (o *OrchestratorCheck) processServices(sender aggregator.Sender) {
 	sender.OrchestratorMetadata(messages, o.clusterID, forwarder.PayloadTypeService)
 }
 
+// TODO: add code to also collect our cluster Resource
+// TODO: try out whether we can collect the counts already here (node, namespace, pod) without much overhead
+// TODO: we now have the information in the client
 func (o *OrchestratorCheck) processNodes(sender aggregator.Sender) {
 	if o.nodesLister == nil {
 		return
