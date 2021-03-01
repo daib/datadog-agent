@@ -240,9 +240,55 @@ func chunkServices(services []*model.Service, chunkCount, chunkSize int) [][]*mo
 	return chunks
 }
 
-func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.OrchestratorConfig, clusterID string) ([]model.MessageBody, error) {
+func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.OrchestratorConfig, clusterID string) (model.MessageBody, error) {
+	start := time.Now()
+	//ApiServerVersion map[string]int32 `protobuf:"bytes,5,rep,name=apiServerVersion" json:"apiServerVersion,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	nodeCount := int32(0)
+	kubeletVersions := map[string]int32{}
+	podCap := uint32(0)
+	podAllocatable := uint32(0)
+	memoryAllocatable := uint64(0)
+	memoryCap := uint64(0)
+	cpuAllocatable := uint64(0)
+	cpuCap := uint64(0)
 
-	return nil, nil
+	// TODO: think about skipping this, if possible
+	//  Kubernetes v1. 20 supports clusters with up to 5000 nodes.
+	// doublecheck how we do this for pods in other PR -> idea: create a hash out from above fields
+	for _, node := range nodesList {
+		nodeCount += 1
+		kubeletVersions[node.Status.NodeInfo.KubeletVersion] += 1
+		podCap += uint32(node.Status.Capacity.Pods().Value())
+		podAllocatable += uint32(node.Status.Allocatable.Pods().Value())
+		memoryAllocatable += uint64(node.Status.Allocatable.Memory().Value())
+		memoryCap += uint64(node.Status.Capacity.Memory().Value())
+		cpuAllocatable += uint64(node.Status.Allocatable.Cpu().Value())
+		cpuCap += uint64(node.Status.Capacity.Cpu().Value())
+	}
+
+	cluster := &model.Cluster{
+		NodeCount:         nodeCount,
+		KubeletVersions:   kubeletVersions,
+		ApiServerVersion:  nil,
+		PodCapacity:       podCap,
+		PodAllocatable:    podAllocatable,
+		MemoryAllocatable: memoryAllocatable,
+		MemoryCapacity:    memoryCap,
+		CpuAllocatable:    cpuAllocatable,
+		CpuCapacity:       cpuCap,
+	}
+
+	// TODO: check whether we really need groupSize, as the size is always 1
+	msg := &model.CollectorCluster{
+		ClusterName: cfg.KubeClusterName,
+		ClusterId:   clusterID,
+		GroupId:     groupID,
+		Cluster:     cluster,
+		Tags:        cfg.ExtraTags,
+	}
+
+	log.Debugf("Collected & enriched cluster in %s", time.Now().Sub(start))
+	return msg, nil
 }
 
 // processNodesList process a nodes list into process messages.

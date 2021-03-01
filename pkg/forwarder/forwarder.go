@@ -33,6 +33,8 @@ const (
 	PayloadTypeService = "service"
 	// PayloadTypeNode is the name of the node payload type
 	PayloadTypeNode = "node"
+	// PayloadTypeCluster is the name of the cluster payload type
+	PayloadTypeCluster = "cluster"
 )
 
 var (
@@ -42,6 +44,7 @@ var (
 	transactionsIntakeReplicaSet = expvar.Int{}
 	transactionsIntakeService    = expvar.Int{}
 	transactionsIntakeNode       = expvar.Int{}
+	transactionsIntakeCluster    = expvar.Int{}
 
 	v1SeriesEndpoint       = endpoint{"/api/v1/series", "series_v1"}
 	v1CheckRunsEndpoint    = endpoint{"/api/v1/check_run", "check_run_v1"}
@@ -641,6 +644,8 @@ func (f *DefaultForwarder) SubmitOrchestratorChecks(payload Payloads, extra http
 		transactionsIntakeService.Add(1)
 	case PayloadTypeNode:
 		transactionsIntakeNode.Add(1)
+	case PayloadTypeCluster:
+		transactionsIntakeCluster.Add(1)
 	}
 
 	return f.submitProcessLikePayload(orchestratorEndpoint, payload, extra, true)
