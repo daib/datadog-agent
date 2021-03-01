@@ -17,6 +17,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/orchestrator/config"
 	"github.com/DataDog/datadog-agent/pkg/orchestrator/redact"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes"
+	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	jsoniter "github.com/json-iterator/go"
@@ -240,9 +241,8 @@ func chunkServices(services []*model.Service, chunkCount, chunkSize int) [][]*mo
 	return chunks
 }
 
-func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.OrchestratorConfig, clusterID string) (model.MessageBody, error) {
+func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.OrchestratorConfig, clusterID string, client *apiserver.APIClient) (model.MessageBody, error) {
 	start := time.Now()
-	//ApiServerVersion map[string]int32 `protobuf:"bytes,5,rep,name=apiServerVersion" json:"apiServerVersion,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	nodeCount := int32(0)
 	kubeletVersions := map[string]int32{}
 	podCap := uint32(0)
@@ -255,6 +255,13 @@ func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.Orchest
 	// TODO: think about skipping this, if possible
 	//  Kubernetes v1. 20 supports clusters with up to 5000 nodes.
 	// doublecheck how we do this for pods in other PR -> idea: create a hash out from above fields
+	apiServerVersions := map[string]int32{}
+	apiVersion, err := client.Cl.Discovery().ServerVersion()
+	if err != nil {
+		log.Errorf("Error getting server apiVersion: %s", err.Error())
+		return nil, err
+	}
+	apiServerVersions[apiVersion.String()] = 1
 	for _, node := range nodesList {
 		nodeCount += 1
 		kubeletVersions[node.Status.NodeInfo.KubeletVersion] += 1
@@ -269,7 +276,7 @@ func processCluster(nodesList []*corev1.Node, groupID int32, cfg *config.Orchest
 	cluster := &model.Cluster{
 		NodeCount:         nodeCount,
 		KubeletVersions:   kubeletVersions,
-		ApiServerVersion:  nil,
+		ApiServerVersion:  apiServerVersions,
 		PodCapacity:       podCap,
 		PodAllocatable:    podAllocatable,
 		MemoryAllocatable: memoryAllocatable,

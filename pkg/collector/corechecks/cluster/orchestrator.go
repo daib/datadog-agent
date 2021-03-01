@@ -245,6 +245,7 @@ func (o *OrchestratorCheck) Run() error {
 	o.processPods(sender)
 	o.processServices(sender)
 	o.processNodes(sender)
+	// TODO: currently if nodes is activates, cluster will be collected. Same for Nodes. Probably a bool var might be enough
 	o.processCluster(sender)
 
 	return nil
@@ -371,7 +372,7 @@ func (o *OrchestratorCheck) processCluster(sender aggregator.Sender) {
 	}
 	groupID := atomic.AddInt32(&o.groupID, 1)
 
-	message, err := processCluster(nodesList, groupID, o.orchestratorConfig, o.clusterID)
+	message, err := processCluster(nodesList, groupID, o.orchestratorConfig, o.clusterID, o.apiClient)
 	if err != nil {
 		o.Warnf("Unable to process cluster resource: %s", err) //nolint:errcheck
 		return

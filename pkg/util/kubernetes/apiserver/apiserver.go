@@ -307,7 +307,7 @@ func (c *APIClient) connect() error {
 			return err
 		}
 	}
-	// Try to get apiserver version to confim connectivity
+	// Try to get apiserver version to confirm connectivity
 	APIversion := c.Cl.Discovery().RESTClient().APIVersion()
 	if APIversion.Empty() {
 		return fmt.Errorf("cannot retrieve the version of the API server at the moment")
