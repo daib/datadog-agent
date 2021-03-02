@@ -99,6 +99,9 @@ build do
   if linux? or (windows? and not windows_arch_i386? and ENV['WINDOWS_DDNPM_DRIVER'] and not ENV['WINDOWS_DDNPM_DRIVER'].empty?)
       move 'bin/agent/dist/system-probe.yaml', "#{conf_dir}/system-probe.yaml.example"
   end
+  if linux?
+      move 'bin/agent/dist/security-agent.yaml', "#{conf_dir}/security-agent.yaml.example"
+  end
   move 'bin/agent/dist/conf.d', "#{conf_dir}/"
   copy 'bin/agent', "#{install_dir}/bin/"
 
