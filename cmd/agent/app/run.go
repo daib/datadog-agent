@@ -37,7 +37,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/metadata/host"
 	orchcfg "github.com/DataDog/datadog-agent/pkg/orchestrator/config"
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
-	procapicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/snmp/traps"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
@@ -339,24 +338,16 @@ func StartAgent() error {
 	common.Forwarder.Start() //nolint:errcheck
 	log.Debugf("Forwarder started")
 
+	// setup the orchestrator forwarder (only on cluster check runners)
+	orchestratorForwarder = orchcfg.NewOrchestratorForwarder(confFilePath, true)
+	if orchestratorForwarder != nil {
+		orchestratorForwarder.Start() //nolint:errcheck
+	}
+
 	// setup the aggregator
-	s := serializer.NewSerializer(common.Forwarder)
+	s := serializer.NewSerializer(common.Forwarder, orchestratorForwarder)
 	agg := aggregator.InitAggregator(s, hostname)
 	agg.AddAgentStartupTelemetry(version.AgentVersion)
-
-	// setup the orchestrator forwarder only on cluster check runners
-	if config.IsCLCRunner() && config.Datadog.GetBool("orchestrator_explorer.enabled") {
-		orchestratorCfg := orchcfg.NewDefaultOrchestratorConfig()
-		if err := orchestratorCfg.LoadYamlConfig(confFilePath); err != nil {
-			log.Errorf("Error loading the orchestrator config: %s", err)
-		}
-		keysPerDomain = procapicfg.KeysPerDomains(orchestratorCfg.OrchestratorEndpoints)
-		orchestratorForwarderOpts := forwarder.NewOptions(keysPerDomain)
-		orchestratorForwarderOpts.DisableAPIKeyChecking = true
-		orchestratorForwarder = forwarder.NewDefaultForwarder(orchestratorForwarderOpts)
-		orchestratorForwarder.Start() //nolint:errcheck
-		s.AttachOrchestratorForwarder(orchestratorForwarder)
-	}
 
 	// start dogstatsd
 	if config.Datadog.GetBool("use_dogstatsd") {

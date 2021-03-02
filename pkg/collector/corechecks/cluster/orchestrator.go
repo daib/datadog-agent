@@ -10,7 +10,6 @@ package cluster
 import (
 	"context"
 	"errors"
-	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -44,13 +43,14 @@ const (
 )
 
 var (
+	// this needs to match what is found in https://github.com/kubernetes/kube-state-metrics/blob/09539977815728349522b58154d800e4b517ec9c/internal/store/builder.go#L176-L206
+	// in order to share/split easily the collector configuration with the KSM core check
 	defaultResources = []string{
 		"pods", // unassigned pods
 		"deployments",
 		"replicasets",
 		"services",
 		"nodes",
-		"cluster", // self created resource, mostly based on nodes
 	}
 )
 
@@ -81,6 +81,7 @@ type OrchestratorCheck struct {
 	stopCh                  chan struct{}
 	clusterID               string
 	groupID                 int32
+	isCLCRunner             bool
 	apiClient               *apiserver.APIClient
 	unassignedPodLister     corelisters.PodLister
 	unassignedPodListerSync cache.InformerSynced
@@ -101,6 +102,7 @@ func newOrchestratorCheck(base core.CheckBase, instance *OrchestratorInstance) *
 		instance:           instance,
 		stopCh:             make(chan struct{}),
 		groupID:            rand.Int31(),
+		isCLCRunner:        config.IsCLCRunner(),
 	}
 }
 
@@ -221,8 +223,8 @@ func (o *OrchestratorCheck) Run() error {
 	}
 
 	// If the check is configured as a cluster check, the cluster check worker needs to skip the leader election section.
-	// The Cluster Agent will passed in the `skip_leader_election` bool.
-	if !o.instance.LeaderSkip {
+	// we also do a safety check for dedicated runners to avoid trying the leader election
+	if !o.isCLCRunner || !o.instance.LeaderSkip {
 		// Only run if Leader Election is enabled.
 		if !config.Datadog.GetBool("leader_election") {
 			return log.Error("Leader Election not enabled. The cluster-agent will not run the check.")

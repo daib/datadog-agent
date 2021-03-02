@@ -37,7 +37,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	orchcfg "github.com/DataDog/datadog-agent/pkg/orchestrator/config"
-	procapicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
@@ -195,21 +194,12 @@ func start(cmd *cobra.Command, args []string) error {
 	forwarderOpts.DisableAPIKeyChecking = true
 	f := forwarder.NewDefaultForwarder(forwarderOpts)
 	f.Start() //nolint:errcheck
-	s := serializer.NewSerializer(f)
-
 	// setup the orchestrator forwarder
-	if config.Datadog.GetBool("orchestrator_explorer.enabled") {
-		orchestratorCfg := orchcfg.NewDefaultOrchestratorConfig()
-		if err := orchestratorCfg.LoadYamlConfig(confPath); err != nil {
-			log.Errorf("Error loading the orchestrator config: %s", err)
-		}
-		keysPerDomain = procapicfg.KeysPerDomains(orchestratorCfg.OrchestratorEndpoints)
-		orchestratorForwarderOpts := forwarder.NewOptions(keysPerDomain)
-		orchestratorForwarderOpts.DisableAPIKeyChecking = true
-		orchestratorForwarder = forwarder.NewDefaultForwarder(orchestratorForwarderOpts)
+	orchestratorForwarder = orchcfg.NewOrchestratorForwarder(confPath, false)
+	if orchestratorForwarder != nil {
 		orchestratorForwarder.Start() //nolint:errcheck
-		s.AttachOrchestratorForwarder(orchestratorForwarder)
 	}
+	s := serializer.NewSerializer(f, orchestratorForwarder)
 
 	aggregatorInstance := aggregator.InitAggregator(s, hostname)
 	aggregatorInstance.AddAgentStartupTelemetry(fmt.Sprintf("%s - Datadog Cluster Agent", version.AgentVersion))
