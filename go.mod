@@ -40,7 +40,7 @@ require (
 	code.cloudfoundry.org/rep v0.0.0-20200325195957-1404b978e31e // indirect
 	code.cloudfoundry.org/rfc5424 v0.0.0-20180905210152-236a6d29298a // indirect
 	code.cloudfoundry.org/tlsconfig v0.0.0-20200131000646-bbe0f8da39b3 // indirect
-	github.com/DataDog/agent-payload v4.57.0+incompatible
+	github.com/DataDog/agent-payload v4.58.0+incompatible
 	github.com/DataDog/datadog-go v4.4.0+incompatible
 	github.com/DataDog/datadog-operator v0.2.1-0.20200709152311-9c71245c6822
 	github.com/DataDog/ebpf v0.0.0-20210121152636-7fc17cac5ed7
@@ -223,5 +223,3 @@ replace (
 
 // bitbucket.org/ww/goautoneg has disappeared. Remove this when we bump the watermarkpodautoscaler dependency to 2.0.0+
 replace bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30
-
-replace github.com/DataDog/agent-payload => github.com/DataDog/agent-payload v4.57.1-0.20210301102557-fe3275f3ff93+incompatible // indirect

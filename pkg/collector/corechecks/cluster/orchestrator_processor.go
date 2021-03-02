@@ -321,7 +321,7 @@ func processNodesList(nodesList []*corev1.Node, groupID int32, cfg *config.Orche
 	cluster := &model.Cluster{
 		NodeCount:         nodeCount,
 		KubeletVersions:   kubeletVersions,
-		ApiServerVersion:  apiServerVersions,
+		ApiServerVersions:  apiServerVersions,
 		PodCapacity:       podCap,
 		PodAllocatable:    podAllocatable,
 		MemoryAllocatable: memoryAllocatable,
