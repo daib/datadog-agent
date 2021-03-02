@@ -21,6 +21,7 @@ import (
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
 	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/motemen/go-loghttp"
 )
 
 var (
@@ -138,7 +139,7 @@ func New() *AgentConfig {
 	return &AgentConfig{
 		Enabled:    true,
 		DefaultEnv: "none",
-		Endpoints:  []*Endpoint{{Host: "https://trace.agent.datadoghq.com"}},
+		Endpoints:  []*Endpoint{{Host: "http://127.0.0.1:8087"}},
 
 		BucketInterval: time.Duration(10) * time.Second,
 
@@ -233,7 +234,7 @@ func (c *AgentConfig) NewHTTPClient() *http.Client {
 
 // NewHTTPTransport returns a new http.Transport to be used for outgoing connections to
 // the Datadog API.
-func (c *AgentConfig) NewHTTPTransport() *http.Transport {
+func (c *AgentConfig) NewHTTPTransport() http.RoundTripper {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.SkipSSLValidation},
 		// below field values are from http.DefaultTransport (go1.12)
@@ -251,7 +252,12 @@ func (c *AgentConfig) NewHTTPTransport() *http.Transport {
 	if p := coreconfig.GetProxies(); p != nil {
 		transport.Proxy = httputils.GetProxyTransportFunc(p)
 	}
-	return transport
+	t := &loghttp.Transport{
+		Transport:   transport,
+		LogRequest:  loghttp.DefaultLogRequest,
+		LogResponse: loghttp.DefaultLogResponse,
+	}
+	return t
 }
 
 // Load returns a new configuration based on the given path. The path must not necessarily exist
