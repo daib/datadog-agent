@@ -74,7 +74,6 @@ func mkContext(buildType string) context {
 		KubeApiServer:     true, // TODO: remove when phasing out from node-agent
 		Compliance:        true,
 		SNMP:              true,
-		SecurityModule:    true,
 	}
 
 	switch buildType {
@@ -94,8 +93,9 @@ func mkContext(buildType string) context {
 		}
 	case "system-probe":
 		return context{
-			SystemProbe:   true,
-			NetworkModule: true,
+			SystemProbe:    true,
+			NetworkModule:  true,
+			SecurityModule: true,
 		}
 	case "dogstatsd":
 		return context{
