@@ -196,8 +196,7 @@ func (o *OrchestratorCheck) Configure(config, initConfig integration.Data, sourc
 			o.serviceLister = serviceInformer.Lister()
 			o.serviceListerSync = serviceInformer.Informer().HasSynced
 			informersToSync[apiserver.ServicesInformer] = serviceInformer.Informer()
-		//	TODO: discuss whether we want this. What if we collect nodes, but don't want cluster or vice versa?
-		case "nodes", "cluster":
+		case "nodes":
 			nodesInformer := apiCl.InformerFactory.Core().V1().Nodes()
 			o.nodesLister = nodesInformer.Lister()
 			o.nodesListerSync = nodesInformer.Informer().HasSynced
@@ -245,8 +244,6 @@ func (o *OrchestratorCheck) Run() error {
 	o.processPods(sender)
 	o.processServices(sender)
 	o.processNodes(sender)
-	// TODO: currently if nodes is activates, cluster will be collected. Same for Nodes. Probably a bool var might be enough
-	o.processCluster(sender)
 
 	return nil
 }
@@ -344,53 +341,22 @@ func (o *OrchestratorCheck) processNodes(sender aggregator.Sender) {
 	}
 	groupID := atomic.AddInt32(&o.groupID, 1)
 
-	messages, err := processNodesList(nodesList, groupID, o.orchestratorConfig, o.clusterID)
+	nodesMessages, clusterMessage, err := processNodesList(nodesList, groupID, o.orchestratorConfig, o.clusterID, o.apiClient)
 	if err != nil {
 		o.Warnf("Unable to process node list: %s", err) //nolint:errcheck
 		return
 	}
 
 	stats := orchestrator.CheckStats{
-		CacheHits: len(nodesList) - len(messages),
-		CacheMiss: len(messages),
+		CacheHits: len(nodesList) - len(nodesMessages),
+		CacheMiss: len(nodesMessages),
 		NodeType:  orchestrator.K8sNode,
 	}
 
 	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sNode), stats, orchestrator.NoExpiration)
 
-	sender.OrchestratorMetadata(messages, o.clusterID, forwarder.PayloadTypeNode)
-}
-
-func (o *OrchestratorCheck) processCluster(sender aggregator.Sender) {
-	if o.nodesLister == nil {
-		return
-	}
-	nodesList, err := o.nodesLister.List(labels.Everything())
-	if err != nil {
-		o.Warnf("Unable to list nodes for cluster resource: %s", err) //nolint:errcheck
-		return
-	}
-	groupID := atomic.AddInt32(&o.groupID, 1)
-
-	message, err := processCluster(nodesList, groupID, o.orchestratorConfig, o.clusterID, o.apiClient)
-	if err != nil {
-		o.Warnf("Unable to process cluster resource: %s", err) //nolint:errcheck
-		return
-	}
-	stats := orchestrator.CheckStats{
-		CacheHits: 0,
-		CacheMiss: 1,
-		NodeType:  orchestrator.K8sCluster,
-	}
-
-	if message == nil {
-		stats.CacheHits = 1
-		stats.CacheMiss = 0
-	}
-
-	orchestrator.KubernetesResourceCache.Set(orchestrator.BuildStatsKey(orchestrator.K8sCluster), stats, orchestrator.NoExpiration)
-
-	sender.OrchestratorMetadata([]serializer.ProcessMessageBody{message}, o.clusterID, forwarder.PayloadTypeCluster)
+	sender.OrchestratorMetadata(nodesMessages, o.clusterID, forwarder.PayloadTypeNode)
+	sender.OrchestratorMetadata([]serializer.ProcessMessageBody{clusterMessage}, o.clusterID, forwarder.PayloadTypeCluster)
 }
 
 func (o *OrchestratorCheck) processPods(sender aggregator.Sender) {
