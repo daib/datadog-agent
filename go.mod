@@ -25,6 +25,8 @@ replace (
 	google.golang.org/grpc => github.com/grpc/grpc-go v1.26.0
 )
 
+replace github.com/DataDog/pkg/util/log => ./pkg/export/log
+
 require (
 	code.cloudfoundry.org/bbs v0.0.0-20200403215808-d7bc971db0db
 	code.cloudfoundry.org/cfhttp/v2 v2.0.0 // indirect
